@@ -11,10 +11,16 @@ def get_xy():
     # print(cafe)  # [500 rows x 13 columns]
     # print(cafe.values.shape)  # (500, 13)
 
+    values = [cafe['아메리카노 수'], cafe['핫커피 수'], cafe['아이스커피 수'], cafe['핫음료 수'],
+              cafe['아이스음료 수'], cafe['블랜딩음료 수'], cafe['티 수'], cafe['펄 수'], cafe['총 잔 수'],
+              cafe['근무자 수'], cafe['밀린 주문 수'], cafe['대기시간 (+밀린 주문 수)']]
+    values = np.transpose(values)
+    # print(values.shape)  # (500, 12)
+
     scaler = preprocessing.MinMaxScaler()  # 최소, 최대 범위를 0~1로
     values = scaler.fit_transform(cafe.values)
 
-    grams = nltk.ngrams(values, 7+1)
+    grams = nltk.ngrams(values, 5+1)
     grams = np.float32(list(grams))  # 튜플의 리스트라 원하는 연산을 못함. 넘파이로 바꿔줌
 
     x = np.float32([g[:-1] for g in grams])
@@ -33,35 +39,49 @@ def model_cafe():
 
     model = keras.Sequential()
     model.add(keras.layers.InputLayer(input_shape=x.shape[1:]))
+    model.add(keras.layers.LSTM(512, return_sequences=True))
+    model.add(keras.layers.LSTM(128, return_sequences=True))
+    model.add(keras.layers.LSTM(108, return_sequences=True))
+    model.add(keras.layers.SimpleRNN(56, return_sequences=True))
     model.add(keras.layers.SimpleRNN(32, return_sequences=False))
     # hidden stage의 사이즈를 늘리거나 simplernn layer를 늘릴수록 정확도가 높아짐
     # return_sequences:true->입력한 값만큼,false->1개  # rnn은 x는 3차원 데이터가 들어옴. y는 2차원임
 
-    model.add(keras.layers.Dense(1))
-    # model.summary()
+    model.add(keras.layers.Dense(1, activation='sigmoid'))
+    model.summary()
 
-    model.compile(optimizer=keras.optimizers.Adam(0.001),
+    model.compile(optimizer=keras.optimizers.SGD(0.1),
                   loss=keras.losses.mse,
-                  metrics='mae')    # mae는 정답과의 오차
+                  metrics='acc')    # mae는 정답과의 오차
 
-    model.fit(x_train, y_train, epochs=1000, verbose=2)
+    model.fit(x_train, y_train, epochs=1000, verbose=2,
+              validation_split=0.2)
     print(model.evaluate(x_test, y_test, verbose=0))
 
-    p = model.predict(x_test)
+    t = [[[1, 1, 0, 0, 0, 0, 0, 1, 0, 2, 2, 1, 6.1],
+         [2, 0, 0, 0, 2, 1, 2, 0, 0, 5, 2, 1, 11.6],
+         [3, 0, 1, 0, 0, 1, 0, 0, 0, 2, 2, 2, 14.5],
+         [4, 0, 0, 0, 0, 0, 0, 3, 0, 3, 2, 2, 15.1],
+         [5, 2, 0, 1, 0, 0, 0, 0, 0, 3, 2, 3, 19.3]]]
+
+    # line3-7
+    p = model.predict(t)
+    p = (data_max - data_min) * p + data_min
+    print(p)
+
+    exit()
 
     plt.subplot(1, 2, 1)
-    plt.plot(y_test, 'r', label='target')  # 데이터를 섞어서 시각화가 제대로 되지 않음 # 셔플옵션  false로 주고오기
+    plt.plot(y_test, 'r', label='target')
     plt.plot(p, 'g', label='prediction')
-    plt.legend()  # label 값을 표에 표시할수있다
+    plt.legend()
 
     p = (data_max - data_min) * p + data_min
-    # print((data_max-data_min)*p+data_min)
     y_test = (data_max - data_min) * y_test + data_min
 
     plt.subplot(1, 2, 2)
-    plt.plot(y_test, 'r')  # 데이터를 섞어서 시각화가 제대로 되지 않음 # 셔플옵션  false로 주고오기
+    plt.plot(y_test, 'r')
     plt.plot(p, 'g')
-    # plt.ylim(2650, 3000)
     plt.show()
 
 

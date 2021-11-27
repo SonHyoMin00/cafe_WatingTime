@@ -8,8 +8,6 @@ from sklearn import preprocessing, model_selection
 import matplotlib.pyplot as plt
 
 
-# 퀴즈
-# GOOG.csv 파일을 읽고 70%로 학습하고 30%에 대해 결과를 예측하세요 (Close 예측)
 def get_xy():
     goog = pd.read_csv('data/GOOG.csv', index_col=0)    # Date 를 인덱스로 한다. 이때 나중에 요일 관련된 정보를 추출할 수 있음
     print(goog)  # [252 rows x 6 columns]
@@ -52,9 +50,10 @@ def model_google():
 
     model.compile(optimizer=keras.optimizers.Adam(0.001),
                   loss=keras.losses.mse,
-                  metrics='mae')  # mae는 정답과의 오차
+                  metrics='acc')  # mae는 정답과의 오차
 
-    model.fit(x_train, y_train, epochs=100, verbose=2)
+    model.fit(x_train, y_train, epochs=100, verbose=2,
+              validation_data=(x_test, y_test))
     print(model.evaluate(x_test, y_test, verbose=0))
 
     p = model.predict(x_test)
